@@ -1,4 +1,4 @@
-//UT-EID=DAA3652
+//UT-EID=DAA3652_SAO993
 
 import java.lang.reflect.Array;
 import java.util.concurrent.*;
@@ -13,32 +13,61 @@ public class ForkJoinPSort extends RecursiveTask<Void>{
     int begin, end;
     boolean increasing;
     ForkJoinPSort(int[] A, int begin, int end, boolean increasing){
-        A=this.A;
-        begin=this.begin;
-        end=this.end;
-        increasing=this.increasing;
+        this.A = A;
+        this.begin = begin;
+        this.end = end;
+        this.increasing = increasing;
     }
     public static void parallelSort(int[] A, int begin, int end, boolean increasing) {
         // TODO: Implement your parallel sort function using ForkJoinPool
-        int processors = Runtime.getRuntime().availableProcessors();
-        ForkJoinPool pool = new ForkJoinPool(processors);
-        ForkJoinPSort inst = new ForkJoinPSort(A,begin,end,increasing);
-        pool.invoke(inst);
+        ForkJoinPool forkJoinPool = ForkJoinPool.commonPool();
+        ForkJoinPSort sort = new ForkJoinPSort(A, 0, A.length, increasing);
+        forkJoinPool.invoke(sort);
+
+//        int processors = Runtime.getRuntime().availableProcessors();
+//        ForkJoinPool pool = new ForkJoinPool(processors);
+//        ForkJoinPSort inst = new ForkJoinPSort(A,begin,end,increasing);
+//        pool.invoke(inst);
     }
 
     @Override
     protected Void compute() {
-        if(A.length>=16){
-            ForkJoinPSort l = new ForkJoinPSort(A,begin,end/2,increasing);
-            ForkJoinPSort r = new ForkJoinPSort(A,end/2,end,increasing);
+        if(this.end - this.begin > 16) {
+            int mid = begin + (end - begin)/2;
+            ForkJoinPSort l = new ForkJoinPSort(A,begin,mid,increasing);
+            ForkJoinPSort r = new ForkJoinPSort(A,mid,end,increasing);
             l.fork();
             r.fork();
-//            return concatenate(l.join(), r.compute());
-        }
-        else {
+
+            invokeAll(l, r);
+            merge(this.begin, mid, this.end);
+        } else {
             insertSort();
         }
         return null;
+    }
+
+    private void merge(int begin, int mid, int end) {
+        int[] temp = new int[end - begin];
+        int i = begin, j = mid, k = 0;
+
+        while (i < mid && j < end) {
+            if (increasing ? A[i] <= A[j] : A[i] >= A[j]) {
+                temp[k++] = A[i++];
+            } else {
+                temp[k++] = A[j++];
+            }
+        }
+
+        while (i < mid) {
+            temp[k++] = A[i++];
+        }
+        while (j < end) {
+            temp[k++] = A[j++];
+        }
+
+        // Copy back to original array
+        System.arraycopy(temp, 0, A, begin, temp.length);
     }
 
 //    public <T> T[] concatenate(T[] a, T[] b) {
@@ -53,29 +82,23 @@ public class ForkJoinPSort extends RecursiveTask<Void>{
 //        return c;
 //    }
 
-    public void insertSort(){
-        int n = A.length;
-        if(increasing) {
-            for (int i = 1; i < n; ++i) {
-                int key = A[i];
-                int j = i - 1;
+    public void insertSort() {
+        int n = this.end;
+        for (int i = this.begin; i < n; i++) {
+            int key = A[i];
+            int j = i - 1;
+            if (increasing) {
                 while (j >= 0 && A[j] > key) {
                     A[j + 1] = A[j];
-                    j = j - 1;
+                    j--;
                 }
-                A[j + 1] = key;
-            }
-        }
-        else{
-            for (int i = 1; i < n; ++i) {
-                int key = A[i];
-                int j = i - 1;
+            } else {
                 while (j >= 0 && A[j] < key) {
                     A[j + 1] = A[j];
-                    j = j - 1;
+                    j--;
                 }
-                A[j + 1] = key;
             }
+            A[j + 1] = key;
         }
     }
 }
