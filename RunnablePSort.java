@@ -72,7 +72,6 @@ public class RunnablePSort implements Runnable{
         while (j < end) {
             temp[k++] = A[j++];
         }
-
         System.arraycopy(temp, 0, A, begin, temp.length);
     }
 
